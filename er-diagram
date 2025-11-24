@@ -1,0 +1,169 @@
+erDiagram
+  STUDENTS {
+    int student_id PK
+    varchar full_name
+    varchar email
+    varchar department
+    int semester
+    int age
+    varchar gender
+  }
+
+  COURSES {
+    int course_id PK
+    varchar course_code
+    varchar title
+    numeric credits
+    varchar department
+  }
+
+  COURSE_SECTIONS {
+    int section_id PK
+    int course_id FK
+    varchar term
+    varchar instructor
+    int room_id FK
+    time start_time
+    time end_time
+  }
+
+  ENROLLMENTS {
+    int enrollment_id PK
+    int student_id FK
+    int section_id FK
+    timestamptz enrolled_on
+    numeric grade
+  }
+
+  ROOMS {
+    int room_id PK
+    varchar building
+    varchar room_number
+    int capacity
+  }
+
+  SENSORS {
+    int sensor_id PK
+    varchar sensor_name
+    varchar sensor_type
+    int room_id FK
+  }
+
+  SENSOR_READINGS {
+    bigint reading_id PK
+    int sensor_id FK
+    timestamptz reading_ts
+    numeric numeric_value
+    varchar unit
+    jsonb meta
+  }
+
+  PRESENCE_LOGS {
+    bigint log_id PK
+    int student_id FK
+    varchar device_id
+    timestamptz seen_ts
+    varchar building
+    int room_id
+    varchar source
+  }
+
+  CAMPUS_FACTORS {
+    int factor_id PK
+    varchar name
+    varchar category
+    varchar event_type
+    varchar weather
+    smallint workload_level
+  }
+
+  MOOD_LOGS {
+    bigint mood_id PK
+    int student_id FK
+    varchar mood
+    smallint stress_level
+    bytea note_encrypted
+    timestamptz logged_at
+    int factor_id FK
+  }
+
+  PRODUCTIVITY_LOGS {
+    bigint productivity_id PK
+    int student_id FK
+    smallint productivity_score
+    numeric study_hours
+    numeric sleep_hours
+    bytea notes_encrypted
+    timestamptz logged_at
+    int factor_id FK
+  }
+
+  SERVICES {
+    int service_id PK
+    varchar name
+    varchar category
+  }
+
+  SERVICE_APPOINTMENTS {
+    bigint appointment_id PK
+    int student_id FK
+    int service_id FK
+    timestamptz scheduled_at
+    int duration_minutes
+  }
+
+  ADMINS {
+    int admin_id PK
+    varchar name
+    varchar role
+  }
+
+  INTERVENTIONS {
+    bigint intervention_id PK
+    int student_id FK
+    int admin_id FK
+    bytea description_encrypted
+    varchar action_taken
+    bytea outcome_encrypted
+    date follow_up_date
+    boolean confidential
+  }
+
+  INTERVENTION_TAGS {
+    int tag_id PK
+    varchar name
+  }
+
+  INTERVENTION_TAG_MAP {
+    int intervention_id FK
+    int tag_id FK
+  }
+
+  ANALYTICS_STUDENT_DAILY {
+    int student_id PK
+    date day PK
+    numeric avg_productivity
+    numeric avg_stress
+  }
+
+  %% Relationships
+  STUDENTS ||--o{ ENROLLMENTS : "has"
+  COURSE_SECTIONS ||--o{ ENROLLMENTS : "contains"
+  COURSES ||--o{ COURSE_SECTIONS : "offers"
+  ROOMS ||--o{ COURSE_SECTIONS : "hosts"
+  ROOMS ||--o{ SENSORS : "contains"
+  SENSORS ||--o{ SENSOR_READINGS : "produces"
+  STUDENTS ||--o{ PRESENCE_LOGS : "appears in"
+  STUDENTS ||--o{ MOOD_LOGS : "reports"
+  STUDENTS ||--o{ PRODUCTIVITY_LOGS : "reports"
+  STUDENTS ||--o{ SERVICE_APPOINTMENTS : "books"
+  SERVICES ||--o{ SERVICE_APPOINTMENTS : "provides"
+  STUDENTS ||--o{ WELLBEING_SURVEYS : "submits"
+  STUDENTS ||--o{ COUNSELING_VISITS : "attends"
+  CAMPUS_FACTORS ||--o{ MOOD_LOGS : "context for"
+  CAMPUS_FACTORS ||--o{ PRODUCTIVITY_LOGS : "context for"
+  ADMINS ||--o{ INTERVENTIONS : "records"
+  STUDENTS ||--o{ INTERVENTIONS : "receives"
+  INTERVENTIONS ||--o{ INTERVENTION_TAG_MAP : "tagged by"
+  INTERVENTION_TAGS ||--o{ INTERVENTION_TAG_MAP : "tags"
+  ANALYTICS_STUDENT_DAILY ||--|| STUDENTS : "derived from"
