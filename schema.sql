@@ -1,221 +1,173 @@
-this whole code-- Enable required extension
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE DATABASE IF NOT EXISTS mood_tracker;
+USE mood_tracker;
 
+--------------------------------------------------------
 -- 1. Students
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS students (
-  student_id       SERIAL PRIMARY KEY,
-  full_name        VARCHAR(100) NOT NULL,
-  email            VARCHAR(150) UNIQUE,
-  department       VARCHAR(50) NOT NULL,
-  semester         INT NOT NULL,
-  age              INT,
-  gender           VARCHAR(30) CHECK (gender IN ('Male','Female','Non-binary','Prefer not to say')),
-  created_at       TIMESTAMP WITH TIME ZONE DEFAULT now()
+    student_id VARCHAR(20) PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50) NOT NULL,
+    semester INT NOT NULL,
+    age INT,
+    gender ENUM('Male','Female','Non-binary','Prefer not to say'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Academic structure
+--------------------------------------------------------
+-- 2. Courses & Enrollment
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS courses (
-  course_id        SERIAL PRIMARY KEY,
-  course_code      VARCHAR(20) NOT NULL,
-  title            VARCHAR(200) NOT NULL,
-  credits          NUMERIC(3,1) DEFAULT 3.0,
-  department       VARCHAR(50)
+    course_id VARCHAR(20) PRIMARY KEY,
+    course_code VARCHAR(20) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    credits DECIMAL(3,1) DEFAULT 3.0,
+    department VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS course_sections (
-  section_id       SERIAL PRIMARY KEY,
-  course_id        INT NOT NULL REFERENCES courses(course_id) ON DELETE CASCADE,
-  term             VARCHAR(20) NOT NULL,
-  instructor       VARCHAR(100),
-  capacity         INT,
-  room_id          INT,
-  start_time       TIME,
-  end_time         TIME,
-  days_of_week     VARCHAR(50)
+    section_id VARCHAR(20) PRIMARY KEY,
+    course_id VARCHAR(20) NOT NULL,
+    term VARCHAR(20) NOT NULL,
+    instructor VARCHAR(100),
+    room VARCHAR(50),
+    schedule VARCHAR(100),
+    FOREIGN KEY(course_id) REFERENCES courses(course_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS enrollments (
-  enrollment_id    SERIAL PRIMARY KEY,
-  student_id       INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  section_id       INT NOT NULL REFERENCES course_sections(section_id) ON DELETE CASCADE,
-  enrolled_on      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  grade            NUMERIC(4,2),
-  UNIQUE(student_id, section_id)
+    enrollment_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    section_id VARCHAR(20) NOT NULL,
+    enrolled_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    grade DECIMAL(4,2),
+    UNIQUE(student_id, section_id),
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY(section_id) REFERENCES course_sections(section_id) ON DELETE CASCADE
 );
 
--- 3. Rooms and events
-CREATE TABLE IF NOT EXISTS rooms (
-  room_id          SERIAL PRIMARY KEY,
-  building         VARCHAR(100),
-  room_number      VARCHAR(50),
-  capacity         INT
-);
-
-CREATE TABLE IF NOT EXISTS campus_events (
-  event_id         SERIAL PRIMARY KEY,
-  title            VARCHAR(200) NOT NULL,
-  description      TEXT,
-  location_room_id INT REFERENCES rooms(room_id),
-  start_ts         TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_ts           TIMESTAMP WITH TIME ZONE NOT NULL,
-  organizer        VARCHAR(100)
-);
-
--- 4. Campus factors
+--------------------------------------------------------
+-- 3. Campus Factors
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS campus_factors (
-  factor_id    SERIAL PRIMARY KEY,
-  name         VARCHAR(150) NOT NULL,
-  category     VARCHAR(80),
-  description  TEXT,
-  event_type   VARCHAR(80) CHECK (event_type IN (
-                 'Exam Week','Holiday','Regular Class Day','Sports Event','Festival','Placement Season','Assignment Deadline')) ,
-  weather      VARCHAR(20) CHECK (weather IN ('Sunny','Cloudy','Rainy','Cold','Humid')),
-  workload_level SMALLINT CHECK (workload_level BETWEEN 1 AND 10)
+    factor_id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(80),
+    event_type ENUM('Exam Week','Holiday','Regular Class Day','Sports Event',
+                    'Festival','Placement Season','Assignment Deadline'),
+    weather ENUM('Sunny','Cloudy','Rainy','Cold','Humid'),
+    workload_level TINYINT CHECK(workload_level BETWEEN 1 AND 10)
 );
 
--- 5. Campus services and appointments
+--------------------------------------------------------
+-- 4. Services & Appointments
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS services (
-  service_id       SERIAL PRIMARY KEY,
-  name             VARCHAR(150) NOT NULL,
-  category         VARCHAR(50),
-  location         VARCHAR(150)
+    service_id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(50),
+    location VARCHAR(150)
 );
 
 CREATE TABLE IF NOT EXISTS service_appointments (
-  appointment_id   BIGSERIAL PRIMARY KEY,
-  student_id       INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  service_id       INT NOT NULL REFERENCES services(service_id) ON DELETE CASCADE,
-  staff_member     VARCHAR(100),
-  scheduled_at     TIMESTAMP WITH TIME ZONE NOT NULL,
-  duration_minutes INT,
-  outcome_notes    TEXT,
-  created_at       TIMESTAMP WITH TIME ZONE DEFAULT now()
+    appointment_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    service_id VARCHAR(20) NOT NULL,
+    scheduled_at DATETIME NOT NULL,
+    outcome_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY(service_id) REFERENCES services(service_id) ON DELETE CASCADE
 );
 
--- 6. Wellbeing surveys and counseling visits
+--------------------------------------------------------
+-- 5. Wellbeing & Counseling
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS wellbeing_surveys (
-  survey_id        BIGSERIAL PRIMARY KEY,
-  student_id       INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  survey_ts        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  stress_level     SMALLINT CHECK (stress_level BETWEEN 0 AND 10),
-  sleep_hours      NUMERIC(3,1),
-  study_hours      NUMERIC(4,2),
-  mood             VARCHAR(50),
-  notes_encrypted  BYTEA
+    survey_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    survey_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    stress_level TINYINT CHECK(stress_level BETWEEN 0 AND 10),
+    sleep_hours DECIMAL(3,1),
+    study_hours DECIMAL(4,2),
+    mood VARCHAR(50),
+    notes TEXT,
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS counseling_visits (
-  visit_id         BIGSERIAL PRIMARY KEY,
-  student_id       INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  visit_ts         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  counselor        VARCHAR(100),
-  reason           VARCHAR(200),
-  follow_up_needed BOOLEAN DEFAULT FALSE,
-  notes_encrypted  BYTEA
+    visit_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    visit_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    counselor VARCHAR(100),
+    reason VARCHAR(200),
+    follow_up_needed BOOLEAN DEFAULT FALSE,
+    notes TEXT,
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE
 );
 
--- 7. Sensors and environmental readings
-CREATE TABLE IF NOT EXISTS sensors (
-  sensor_id        SERIAL PRIMARY KEY,
-  sensor_name      VARCHAR(150),
-  sensor_type      VARCHAR(50),
-  building         VARCHAR(100),
-  room_id          INT REFERENCES rooms(room_id),
-  installed_on     DATE
-);
-
-CREATE TABLE IF NOT EXISTS sensor_readings (
-  reading_id       BIGSERIAL PRIMARY KEY,
-  sensor_id        INT NOT NULL REFERENCES sensors(sensor_id) ON DELETE CASCADE,
-  reading_ts       TIMESTAMP WITH TIME ZONE NOT NULL,
-  numeric_value    NUMERIC(10,4),
-  unit             VARCHAR(20),
-  meta             JSONB
-);
-
--- 8. Passive presence logs
-CREATE TABLE IF NOT EXISTS presence_logs (
-  log_id           BIGSERIAL PRIMARY KEY,
-  student_id       INT REFERENCES students(student_id),
-  device_id        VARCHAR(100),
-  seen_ts          TIMESTAMP WITH TIME ZONE NOT NULL,
-  building         VARCHAR(100),
-  room_id          INT,
-  source           VARCHAR(50)
-);
-
--- 9. Mood logs
+--------------------------------------------------------
+-- 6. Mood & Productivity Logs (Core)
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS mood_logs (
-  mood_id      BIGSERIAL PRIMARY KEY,
-  student_id   INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  mood         VARCHAR(30) NOT NULL CHECK (mood IN ('Very Happy','Happy','Neutral','Sad','Stressed','Tired','Angry')),
-  stress_level SMALLINT NOT NULL CHECK (stress_level BETWEEN 1 AND 10),
-  note_encrypted BYTEA,
-  logged_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  factor_id    INT REFERENCES campus_factors(factor_id) ON DELETE SET NULL,
-  source       VARCHAR(50) DEFAULT 'self-report',
-  created_by   VARCHAR(100)
+    mood_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    mood ENUM('Very Happy','Happy','Neutral','Sad','Stressed','Tired','Angry','Numb','SUICIDAL'),
+    stress_level TINYINT CHECK(stress_level BETWEEN 1 AND 10),
+    notes TEXT,
+    logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    factor_id VARCHAR(20),
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY(factor_id) REFERENCES campus_factors(factor_id) ON DELETE SET NULL
 );
 
--- 10. Productivity logs
 CREATE TABLE IF NOT EXISTS productivity_logs (
-  productivity_id BIGSERIAL PRIMARY KEY,
-  student_id      INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  productivity_score SMALLINT NOT NULL CHECK (productivity_score BETWEEN 1 AND 10),
-  study_hours     NUMERIC(4,1),
-  sleep_hours     NUMERIC(4,1),
-  notes_encrypted BYTEA,
-  logged_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  factor_id       INT REFERENCES campus_factors(factor_id) ON DELETE SET NULL,
-  source          VARCHAR(50) DEFAULT 'self-report',
-  device_id       VARCHAR(100)
+    productivity_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    productivity_score TINYINT CHECK(productivity_score BETWEEN 1 AND 10),
+    study_hours DECIMAL(4,1),
+    sleep_hours DECIMAL(4,1),
+    notes TEXT,
+    logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    factor_id VARCHAR(20),
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY(factor_id) REFERENCES campus_factors(factor_id) ON DELETE SET NULL
 );
 
--- 11. Admins and interventions
+--------------------------------------------------------
+-- 7. Admins & Interventions
+--------------------------------------------------------
 CREATE TABLE IF NOT EXISTS admins (
-  admin_id    SERIAL PRIMARY KEY,
-  name        VARCHAR(100) NOT NULL,
-  role        VARCHAR(50) NOT NULL,
-  email       VARCHAR(150) UNIQUE,
-  phone       VARCHAR(30),
-  created_at  TIMESTAMP WITH TIME ZONE DEFAULT now()
+    admin_id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS interventions (
-  intervention_id  BIGSERIAL PRIMARY KEY,
-  student_id       INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  admin_id         INT REFERENCES admins(admin_id) ON DELETE SET NULL,
-  description_encrypted BYTEA NOT NULL,
-  action_taken     VARCHAR(40) CHECK (action_taken IN ('Email Sent','Counseling Session','Survey','Follow-up Call','None')),
-  outcome_encrypted BYTEA,
-  follow_up_date   DATE,
-  created_at       TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  recorded_by      VARCHAR(100),
-  confidential     BOOLEAN DEFAULT FALSE
+    intervention_id VARCHAR(20) PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    admin_id VARCHAR(20),
+    description TEXT NOT NULL,
+    action_taken ENUM('Email Sent','Counseling Session','Survey','Follow-up Call','None'),
+    follow_up_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY(admin_id) REFERENCES admins(admin_id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS intervention_tags (
-  tag_id    SERIAL PRIMARY KEY,
-  name      VARCHAR(100) UNIQUE NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS intervention_tag_map (
-  intervention_id BIGINT NOT NULL REFERENCES interventions(intervention_id) ON DELETE CASCADE,
-  tag_id          INT NOT NULL REFERENCES intervention_tags(tag_id) ON DELETE CASCADE,
-  PRIMARY KEY (intervention_id, tag_id)
-);
-
--- 12. Analytics schema table for precomputed aggregates
-CREATE SCHEMA IF NOT EXISTS analytics;
-
-CREATE TABLE IF NOT EXISTS analytics.student_daily (
-  student_id INT NOT NULL,
-  day DATE NOT NULL,
-  avg_productivity NUMERIC(5,2),
-  avg_stress NUMERIC(5,2),
-  total_study_hours NUMERIC(8,2),
-  avg_sleep_hours NUMERIC(4,2),
-  prod_samples INT,
-  mood_samples INT,
-  PRIMARY KEY (student_id, day)
+--------------------------------------------------------
+-- 9. Analytics Summary
+--------------------------------------------------------
+CREATE TABLE IF NOT EXISTS student_daily_summary (
+    student_id VARCHAR(20) NOT NULL,
+    day DATE NOT NULL,
+    avg_productivity DECIMAL(5,2),
+    avg_stress DECIMAL(5,2),
+    total_study_hours DECIMAL(8,2),
+    avg_sleep_hours DECIMAL(4,2),
+    PRIMARY KEY(student_id, day),
+    FOREIGN KEY(student_id) REFERENCES students(student_id)
 );
